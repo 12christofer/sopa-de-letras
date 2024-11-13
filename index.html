@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sopa de Letras Interactiva</title>
+  <style>
+    body {
+      font-family: 'Arial', sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      background-color: #f0f8ff;
+      margin: 0;
+      padding: 20px;
+    }
+    .container {
+      text-align: center;
+      max-width: 800px;
+    }
+    h1 {
+      color: #333;
+      font-size: 2em;
+      margin-bottom: 20px;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(15, 40px);
+      gap: 5px;
+      margin: 20px auto;
+      justify-content: center;
+    }
+    .cell {
+      width: 40px;
+      height: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.2em;
+      font-weight: bold;
+      color: #333;
+      background-color: #ffffff;
+      border: 2px solid #ddd;
+      border-radius: 4px;
+      cursor: pointer;
+      user-select: none;
+      transition: all 0.2s ease;
+    }
+    .cell.selected {
+      background-color: #4CAF50;
+      color: white;
+      transform: scale(1.05);
+    }
+    .cell.confirmed {
+      background-color: #2196F3;
+      color: white;
+      border-color: #1976D2;
+    }
+    .word-list {
+      margin: 20px;
+      padding: 15px;
+      background-color: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .word-list span {
+      display: inline-block;
+      margin: 5px 10px;
+      padding: 5px 10px;
+      background-color: #e3f2fd;
+      border-radius: 4px;
+      font-weight: bold;
+    }
+    .found-word {
+      text-decoration: line-through;
+      opacity: 0.7;
+      background-color: #4CAF50 !important;
+      color: white;
+    }
+    @keyframes highlight {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.1); }
+      100% { transform: scale(1); }
+    }
+    .highlight-animation {
+      animation: highlight 0.5s ease;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <h1>Sopa de Letras Interactiva</h1>
+  <div class="grid" id="grid"></div>
+  <div class="word-list">
+    <div>Palabras a encontrar:</div>
+    <div id="wordList"></div>
+  </div>
+</div>
+
+<script>
+  // Lista de palabras corregida
+  const words = [
+    "INTERMEDIACION",
+    "CONVERTIBILIDAD",
+    "COBERTURA",
+    "ESPECULACION",
+    "BANCOS COMERCIALES",
+    "MARKET MAKERS",
+    "BROKERS",
+    "BANCOS CENTRALES",
+    "MERCADO A PLAZO",
+    "SWAP"
+  ];
+
+  const gridLetters = [
+    ['I', 'N', 'T', 'E', 'R', 'M', 'E', 'D', 'I', 'A', 'C', 'I', 'O', 'N', 'X'],
+    ['S', 'W', 'A', 'P', 'C', 'O', 'V', 'E', 'R', 'T', 'I', 'B', 'I', 'L', 'I'],
+    ['C', 'I', 'D', 'A', 'D', 'Z', 'E', 'S', 'P', 'E', 'C', 'U', 'L', 'A', 'C'],
+    ['N', 'B', 'A', 'N', 'C', 'O', 'S', 'C', 'O', 'M', 'E', 'R', 'C', 'I', 'A'],
+    ['L', 'S', 'X', 'M', 'A', 'R', 'K', 'E', 'T', ' ', 'M', 'A', 'K', 'E', 'R'],
+    ['T', 'R', 'A', 'L', 'B', 'R', 'O', 'K', 'E', 'R', 'S', 'T', 'N', 'A', 'O'],
+    ['O', 'B', 'L', 'T', 'I', 'V', 'I', 'A', 'R', 'C', 'O', 'C', 'S', 'S', 'T'],
+    ['C', 'N', 'A', 'S', 'O', 'C', 'E', 'B', 'U', 'L', 'A', 'C', 'X', 'E', 'C'],
+    ['S', 'E', 'A', 'N', 'T', 'R', 'A', 'L', 'E', 'S', 'S', 'C', 'D', 'M', 'U'],
+    ['A', 'B', 'R', 'C', 'O', 'D', 'I', 'V', 'I', 'D', 'O', 'X', 'O', 'L', 'N'],
+    ['E', 'C', 'H', 'A', 'M', 'E', 'R', 'C', 'A', 'D', 'O', 'A', 'P', 'L', 'A'],
+    ['Z', 'O', 'U', 'D', 'I', 'A', 'R', 'N', 'E', 'L', 'X', 'O', 'F', 'R', 'X'],
+    ['A', 'C', 'B', 'N', 'K', 'E', 'E', 'S', 'W', 'T', 'A', 'U', 'C', 'O', 'O'],
+    ['X', 'Y', 'M', 'I', 'D', 'R', 'S', 'A', 'L', 'E', 'P', 'L', 'E', 'A', 'R'],
+    ['R', 'S', 'U', 'O', 'D', 'I', 'N', 'E', 'S', 'R', 'D', 'E', 'C', 'S', 'L'],
+  ];
+
+  const foundWords = new Set();
+  let selectedCells = [];
+  let isSelecting = false;
+  let startCell = null;
+
+  // Inicializar la lista de palabras
+  const wordListContainer = document.getElementById("wordList");
+  words.forEach(word => {
+    const wordSpan = document.createElement("span");
+    wordSpan.textContent = word;
+    wordSpan.dataset.word = word;
+    wordListContainer.appendChild(wordSpan);
+  });
+
+  // Crear la cuadrícula
+  const grid = document.getElementById("grid");
+  const cellElements = [];
+
+  gridLetters.forEach((row, rowIndex) => {
+    cellElements[rowIndex] = [];
+    row.forEach((letter, colIndex) => {
+      const cell = document.createElement("div");
+      cell.classList.add("cell");
+      cell.textContent = letter;
+      cell.dataset.row = rowIndex;
+      cell.dataset.col = colIndex;
+      cellElements[rowIndex][colIndex] = cell;
+      
+      cell.addEventListener("mousedown", (e) => {
+        e.preventDefault();
+        isSelecting = true;
+        startCell = cell;
+        selectedCells = [cell];
+        cell.classList.add("selected");
+      });
+
+      cell.addEventListener("mouseover", () => {
+        if (isSelecting && startCell) {
+          selectedCells.forEach(c => c.classList.remove("selected"));
+          selectedCells = getLineOfCells(startCell, cell);
+          selectedCells.forEach(c => c.classList.add("selected"));
+        }
+      });
+
+      grid.appendChild(cell);
+    });
+  });
+
+  // Obtener todas las celdas en línea entre dos puntos
+  function getLineOfCells(start, end) {
+    const startRow = parseInt(start.dataset.row);
+    const startCol = parseInt(start.dataset.col);
+    const endRow = parseInt(end.dataset.row);
+    const endCol = parseInt(end.dataset.col);
+    
+    const cells = [];
+    const rowDiff = endRow - startRow;
+    const colDiff = endCol - startCol;
+    
+    if (rowDiff === 0 || colDiff === 0 || Math.abs(rowDiff) === Math.abs(colDiff)) {
+      const steps = Math.max(Math.abs(rowDiff), Math.abs(colDiff));
+      const rowStep = rowDiff === 0 ? 0 : rowDiff / steps;
+      const colStep = colDiff === 0 ? 0 : colDiff / steps;
+      
+      for (let i = 0; i <= steps; i++) {
+        const row = Math.round(startRow + i * rowStep);
+        const col = Math.round(startCol + i * colStep);
+        cells.push(cellElements[row][col]);
+      }
+    }
+    
+    return cells;
+  }
+
+  // Verificar palabra seleccionada
+  function checkSelectedWord() {
+    if (selectedCells.length < 2) return;
+
+    const selectedWord = selectedCells.map(cell => cell.textContent).join("");
+    const reversedWord = selectedCells.map(cell => cell.textContent).reverse().join("");
+    
+    // Función auxiliar para normalizar texto
+    function normalizeText(text) {
+      return text.replace(/[\s-]/g, '').toUpperCase();
+    }
+
+    // Verificar si la palabra seleccionada coincide con alguna de la lista
+    const normalizedSelected = normalizeText(selectedWord);
+    const normalizedReversed = normalizeText(reversedWord);
+    
+    let found = words.find(word => 
+      normalizeText(word) === normalizedSelected || 
+      normalizeText(word) === normalizedReversed
+    );
+
+    if (found && !foundWords.has(found)) {
+      foundWords.add(found);
+      selectedCells.forEach(cell => {
+        cell.classList.remove("selected");
+        cell.classList.add("confirmed", "highlight-animation");
+        setTimeout(() => cell.classList.remove("highlight-animation"), 500);
+      });
+
+      // Marcar la palabra como encontrada en la lista
+      const wordSpan = Array.from(wordListContainer.children)
+        .find(span => span.dataset.word === found);
+      if (wordSpan) {
+        wordSpan.classList.add("found-word");
+      }
+
+      if (foundWords.size === words.length) {
+        setTimeout(() => alert("¡Felicitaciones! Has encontrado todas las palabras."), 500);
+      }
+    } else {
+      selectedCells.forEach(cell => cell.classList.remove("selected"));
+    }
+  }
+
+  // Eventos globales
+  document.addEventListener("mouseup", () => {
+    if (isSelecting) {
+      isSelecting = false;
+      startCell = null;
+      checkSelectedWord();
+      selectedCells = [];
+    }
+  });
+
+  document.addEventListener("mouseleave", () => {
+    if (isSelecting) {
+      isSelecting = false;
+      startCell = null;
+      selectedCells.forEach(cell => cell.classList.remove("selected"));
+      selectedCells = [];
+    }
+  });
+</script>
+
+</body>
+</html>
